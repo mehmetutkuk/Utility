@@ -2,7 +2,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Utility
+namespace Utility.Cryptography
 {
     public static class Cryptography
     {
