@@ -16,4 +16,13 @@
     <PackageReference Include="NETCore.MailKit" Version="2.0.3" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="MailServices\HtmlThemes\activation.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="MailServices\HtmlThemes\passwordReset.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

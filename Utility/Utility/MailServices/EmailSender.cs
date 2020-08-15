@@ -8,6 +8,7 @@ using MimeKit.Text;
 using System;
 using System.IO;
 using System.Net;
+using System.Reflection;
 using System.Threading.Tasks;
 using Utility.Models;
 
@@ -18,6 +19,8 @@ namespace Utility.MailServices
     {
         Task SendEmailAsync(EmailType emailType);
         public string[] SetMailBoxes { set; }
+
+        public Activation activation { get; set; }
     }
     public enum EmailType
     {
@@ -28,6 +31,7 @@ namespace Utility.MailServices
     public class EmailService : IEmailService
     {
         private MimeMessage emailMessage;
+        public Activation activation { get; set; }
 
         private static IHostingEnvironment _hostingEnvironment;
 
@@ -46,17 +50,17 @@ namespace Utility.MailServices
 
         private static string HtmlBody(EmailType type)
         {
-            string path = Directory.GetCurrentDirectory();
+            string path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             switch (type)
             {
                 case EmailType.passwordReset:
-                    path = Path.Combine(path,"MailServices/HtmlThemes/passwordReset.html");
+                    path = Path.Combine(path, @"MailServices/HtmlThemes/passwordReset.html");
                     break;
                 case EmailType.activationCode:
-                    path = Path.Combine(path, "MailServices/HtmlThemes/activation.html");
+                    path = Path.Combine(path, @"MailServices/HtmlThemes/activation.html");
                     break;
                 default:
-                    path = Path.Combine(path, "MailServices/HtmlThemes/activation.html");
+                    path = Path.Combine(path, @"MailServices/HtmlThemes/activation.html");
                     break;
             }
             using (StreamReader reader = new StreamReader(path))
@@ -77,6 +81,7 @@ namespace Utility.MailServices
             emailMessage = new MimeMessage();
             this.ec = emailConfig.Value;
             _hostingEnvironment = environment;
+            activation = new Activation();
         }
 
         public async Task SendEmailAsync(EmailType emailType)
@@ -85,7 +90,9 @@ namespace Utility.MailServices
             {
                 emailMessage.From.Add(new MailboxAddress(ec.FromName, ec.FromAddress));
                 emailMessage.Subject = Subject(emailType);
-                emailMessage.Body = new TextPart(TextFormat.Html) { Text = HtmlBody(emailType) };
+                string Body = HtmlBody(emailType).Replace("{{activationCode}}", activation.ActivationCode)
+                    .Replace("{{activationUrl}}", activation.ActivationURL+ "/Api/User/ActivationBackLink?code="+ activation.ActivationCode +"");
+                emailMessage.Body = new TextPart(TextFormat.Html) { Text = Body };
                 using (var client = new SmtpClient())
                 {
                     client.LocalDomain = ec.LocalDomain;
