@@ -91,7 +91,7 @@ namespace Utility.MailServices
                 emailMessage.From.Add(new MailboxAddress(ec.FromName, ec.FromAddress));
                 emailMessage.Subject = Subject(emailType);
                 string Body = HtmlBody(emailType).Replace("{{activationCode}}", activation.ActivationCode)
-                    .Replace("{{activationUrl}}", activation.ActivationURL+ "/Api/User/ActivationBackLink?code="+ activation.ActivationCode +"");
+                    .Replace("{{activationUrl}}", activation.ActivationURL+ "/pages/activate-account?c=" + Cryptography.Cryptography.Encrypt(activation.ActivationCode));
                 emailMessage.Body = new TextPart(TextFormat.Html) { Text = Body };
                 using (var client = new SmtpClient())
                 {
