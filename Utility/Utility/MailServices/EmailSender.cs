@@ -24,8 +24,8 @@ namespace Utility.MailServices
     }
     public enum EmailType
     {
-        passwordReset,
-        activationCode
+        PasswordReset,
+        UserActivation
     }
 
     public class EmailService : IEmailService
@@ -40,9 +40,9 @@ namespace Utility.MailServices
         {
             switch (type)
             {
-                case EmailType.passwordReset:
+                case EmailType.PasswordReset:
                     return "Password Reset";
-                case EmailType.activationCode:
+                case EmailType.UserActivation:
                     return "Activate Your Account";
                 default:
                     return "Activate Your Account";
@@ -54,10 +54,10 @@ namespace Utility.MailServices
             string path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             switch (type)
             {
-                case EmailType.passwordReset:
+                case EmailType.PasswordReset:
                     path = Path.Combine(path, @"MailServices/HtmlThemes/passwordReset.html");
                     break;
-                case EmailType.activationCode:
+                case EmailType.UserActivation:
                     path = Path.Combine(path, @"MailServices/HtmlThemes/activation.html");
                     break;
                 default:
@@ -93,8 +93,16 @@ namespace Utility.MailServices
                 activation.ActivationURL = _configuration.GetSection("Frontend").Get<UrlConfig>().Url;
                 emailMessage.From.Add(new MailboxAddress(ec.FromName, ec.FromAddress));
                 emailMessage.Subject = Subject(emailType);
-                string Body = HtmlBody(emailType).Replace("{{activationCode}}", activation.ActivationCode)
-                    .Replace("{{activationUrl}}", activation.ActivationURL+ "/pages/activate-account?c=" + Cryptography.Cryptography.Encrypt(activation.ActivationCode));
+                string Body = HtmlBody(emailType).Replace("{{activationCode}}", activation.ActivationCode);
+                if(emailType == EmailType.UserActivation)
+                {
+                    Body = Body.Replace("{{activationUrl}}", activation.ActivationURL + "/pages/activate-account?c=" + Cryptography.Cryptography.Encrypt(activation.ActivationCode));
+                }
+                else if (emailType == EmailType.PasswordReset)
+                {
+                    Body = Body.Replace("{{activationUrl}}", activation.ActivationURL + "/pages/forget-password?c=" + Cryptography.Cryptography.Encrypt(activation.ActivationCode));
+                }
+                    
                 emailMessage.Body = new TextPart(TextFormat.Html) { Text = Body };
                 using (var client = new SmtpClient())
                 {
