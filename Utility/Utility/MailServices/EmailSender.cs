@@ -34,6 +34,7 @@ namespace Utility.MailServices
         public Activation activation { get; set; }
 
         private static IHostingEnvironment _hostingEnvironment;
+        private readonly IConfiguration _configuration;
 
         private static string Subject(EmailType type)
         {
@@ -76,18 +77,20 @@ namespace Utility.MailServices
             set { emailMessage.To.Add(new MailboxAddress(value[0], value[1])); }
         }
 
-        public EmailService(IOptions<EmailConfig> emailConfig, IHostingEnvironment environment)
+        public EmailService(IOptions<EmailConfig> emailConfig, IHostingEnvironment environment, IConfiguration configuration)
         {
             emailMessage = new MimeMessage();
             this.ec = emailConfig.Value;
             _hostingEnvironment = environment;
             activation = new Activation();
+            _configuration = configuration;
         }
 
         public async Task SendEmailAsync(EmailType emailType)
         {
             try
             {
+                activation.ActivationURL = _configuration.GetSection("Frontend").Get<UrlConfig>().Url;
                 emailMessage.From.Add(new MailboxAddress(ec.FromName, ec.FromAddress));
                 emailMessage.Subject = Subject(emailType);
                 string Body = HtmlBody(emailType).Replace("{{activationCode}}", activation.ActivationCode)
