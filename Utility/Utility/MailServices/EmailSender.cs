@@ -17,10 +17,11 @@ namespace Utility.MailServices
 
     public interface IEmailService
     {
-        Task SendEmailAsync(EmailType emailType);
+        Task SendEmailAsync();
         public string[] SetMailBoxes { set; }
-
-        public Activation activation { get; set; }
+        public void SetEmailType(EmailType emailType);
+        public void SetActivation(Activation activation);
+        public void SetEmailMessage();
     }
     public enum EmailType
     {
@@ -31,14 +32,30 @@ namespace Utility.MailServices
     public class EmailService : IEmailService
     {
         private MimeMessage emailMessage;
-        public Activation activation { get; set; }
+        public Activation _activation;
+        public static EmailType _emailType;
 
         private static IHostingEnvironment _hostingEnvironment;
         private readonly IConfiguration _configuration;
-
-        private static string Subject(EmailType type)
+        public EmailService(IOptions<EmailConfig> emailConfig, IHostingEnvironment environment, IConfiguration configuration)
         {
-            switch (type)
+            emailMessage = new MimeMessage();
+            this.ec = emailConfig.Value;
+            _hostingEnvironment = environment;
+            _configuration = configuration;
+        }
+        public void SetEmailType(EmailType emailType)
+        {
+            _emailType = emailType;
+        }
+        public void SetActivation(Activation activation)
+        {
+            _activation = activation;
+            _activation.ActivationURL = _configuration.GetSection("Frontend").Get<UrlConfig>().Url;
+        }
+        private static string Subject()
+        {
+            switch (_emailType)
             {
                 case EmailType.PasswordReset:
                     return "Password Reset";
@@ -49,10 +66,10 @@ namespace Utility.MailServices
             }
         }
 
-        private static string HtmlBody(EmailType type)
+        private static string HtmlBody()
         {
             string path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            switch (type)
+            switch (_emailType)
             {
                 case EmailType.PasswordReset:
                     path = Path.Combine(path, @"MailServices/HtmlThemes/passwordReset.html");
@@ -69,45 +86,43 @@ namespace Utility.MailServices
                 return reader.ReadToEnd();
             }
         }
-
+        private string ReplaceHtmlBody(string body)
+        {
+            body = body.Replace("{{activationCode}}", _activation.ActivationCode);
+            switch (_emailType)
+            {
+                case EmailType.UserActivation:
+                    body = body.Replace("{{activationUrl}}", _activation.ActivationURL + "/pages/activate-account?c=" + Cryptography.Cryptography.Encrypt(_activation.ActivationCode));
+                    break;
+                case EmailType.PasswordReset:
+                    body = body.Replace("{{activationUrl}}", _activation.ActivationURL + "/pages/forget-password?c=" + Cryptography.Cryptography.Encrypt(_activation.ActivationCode));
+                    break;
+                default:
+                    break;
+            }
+            return body;
+        }
         private readonly EmailConfig ec;
 
         public string[] SetMailBoxes
         {
             set { emailMessage.To.Add(new MailboxAddress(value[0], value[1])); }
         }
-
-        public EmailService(IOptions<EmailConfig> emailConfig, IHostingEnvironment environment, IConfiguration configuration)
+        public void SetEmailMessage()
         {
-            emailMessage = new MimeMessage();
-            this.ec = emailConfig.Value;
-            _hostingEnvironment = environment;
-            activation = new Activation();
-            _configuration = configuration;
+            emailMessage.From.Add(new MailboxAddress(ec.FromName, ec.FromAddress));
+            emailMessage.Subject = Subject();
+            string Body = HtmlBody();
+            Body = ReplaceHtmlBody(Body);
+            emailMessage.Body = new TextPart(TextFormat.Html) { Text = Body };
         }
-
-        public async Task SendEmailAsync(EmailType emailType)
+        public async Task SendEmailAsync()
         {
             try
-            {
-                activation.ActivationURL = _configuration.GetSection("Frontend").Get<UrlConfig>().Url;
-                emailMessage.From.Add(new MailboxAddress(ec.FromName, ec.FromAddress));
-                emailMessage.Subject = Subject(emailType);
-                string Body = HtmlBody(emailType).Replace("{{activationCode}}", activation.ActivationCode);
-                if(emailType == EmailType.UserActivation)
-                {
-                    Body = Body.Replace("{{activationUrl}}", activation.ActivationURL + "/pages/activate-account?c=" + Cryptography.Cryptography.Encrypt(activation.ActivationCode));
-                }
-                else if (emailType == EmailType.PasswordReset)
-                {
-                    Body = Body.Replace("{{activationUrl}}", activation.ActivationURL + "/pages/forget-password?c=" + Cryptography.Cryptography.Encrypt(activation.ActivationCode));
-                }
-                    
-                emailMessage.Body = new TextPart(TextFormat.Html) { Text = Body };
+            { 
                 using (var client = new SmtpClient())
                 {
                     client.LocalDomain = ec.LocalDomain;
-
                     await client.ConnectAsync(ec.MailServerAddress, Convert.ToInt32(ec.MailServerPort), SecureSocketOptions.Auto).ConfigureAwait(false);
                     await client.AuthenticateAsync(new NetworkCredential(ec.UserId, ec.UserPassword));
                     await client.SendAsync(emailMessage).ConfigureAwait(false);
