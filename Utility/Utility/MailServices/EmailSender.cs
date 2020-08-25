@@ -95,7 +95,7 @@ namespace Utility.MailServices
                     body = body.Replace("{{activationUrl}}", _activation.ActivationURL + "/pages/activate-account?c=" + Cryptography.Cryptography.Encrypt(_activation.ActivationCode));
                     break;
                 case EmailType.PasswordReset:
-                    body = body.Replace("{{activationUrl}}", _activation.ActivationURL + "/pages/forget-password?c=" + Cryptography.Cryptography.Encrypt(_activation.ActivationCode));
+                    body = body.Replace("{{activationUrl}}", _activation.ActivationURL + "/pages/reset-password?c=" + Cryptography.Cryptography.Encrypt(_activation.ActivationCode));
                     break;
                 default:
                     break;
