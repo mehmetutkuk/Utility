@@ -37,10 +37,19 @@ namespace Utility.MailServices
 
         private static IHostingEnvironment _hostingEnvironment;
         private readonly IConfiguration _configuration;
-        public EmailService(IOptions<EmailConfig> emailConfig, IHostingEnvironment environment, IConfiguration configuration)
+        public EmailService( IHostingEnvironment environment, IConfiguration configuration)
         {
             emailMessage = new MimeMessage();
-            this.ec = emailConfig.Value;
+            ec = new EmailConfig()
+            {
+                FromAddress = Environment.GetEnvironmentVariable("EMAIL_FROM_ADDRESS"),
+                LocalDomain = Environment.GetEnvironmentVariable("EMAIL_LOCAL_DOMAIN"),
+                FromName = Environment.GetEnvironmentVariable("EMAIL_FROM_NAME"),
+                MailServerAddress = Environment.GetEnvironmentVariable("EMAIL_MAIL_SERVER_ADDRESS"),
+                MailServerPort = Environment.GetEnvironmentVariable("EMAIL_MAIL_SERVER_PORT"),
+                UserId = Environment.GetEnvironmentVariable("EMAIL_USER_ID"),
+                UserPassword = Environment.GetEnvironmentVariable("EMAIL_USER_PASSWORD")
+            };
             _hostingEnvironment = environment;
             _configuration = configuration;
         }
